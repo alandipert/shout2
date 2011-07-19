@@ -9,7 +9,8 @@ get '/' do
   File.read(File.join('app.html'))
 end
 
-get '/events' do
+post '/events' do
   content_type :json
-  {:state => 'message_received'}.to_json
+  puts params
+  {:state => params["event"]}.to_json
 end
