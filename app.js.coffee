@@ -128,7 +128,7 @@ $ () ->
   sendShout = (shout) ->
     q.put {'cmd': 'shout', 'text': shout}, (resp) ->
       $('#msg').val('')
-      updateState
+      updateState resp
 
   # Wire form submit to shout submission
   $('#shoutform').submit (e) ->
