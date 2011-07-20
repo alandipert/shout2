@@ -22,6 +22,8 @@ window.debug = (msg) ->
 # Events, added with .put, are consumed from the head of the queue one
 # at a time, and consumption is paused until a response is received
 # and the event's callback is dispatched.
+#
+# The internal array is not bounded, and calls to .put do not block.
 class OutboundEventQueue
 
   # **constructor**: Construct a new OutboundEventQueue given an event.
