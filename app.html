@@ -1,11 +1,22 @@
 <head>
 	<title>HCVS Test</title>
-  <script charset="utf-8" src="/javascripts/jquery-1.6.1.min.js"></script>    
+  <script charset="utf-8" src="/javascripts/jquery-1.6.2.min.js"></script>
+  <script charset="utf-8" src="/javascripts/jquery.tmpl.min.js"></script>
   <script charset="utf-8" src="/javascripts/underscore-min.js"></script>
-  <script charset="utf-8" src="/javascripts/json2.js"></script>    
+  <script charset="utf-8" src="/javascripts/json2.js"></script>
+  <script charset="utf-8" src="/javascripts/knockout-1.2.1.js"></script>
   <script charset="utf-8" src="/app.js"></script>
+  <link href="/app.css" rel="stylesheet" />  
 </head>
 <body>
-  <p>hey</p>
+  <h1>Shout2</h1>
+  <div id="shoutbox">
+    <form id="shoutform">
+      <input id="msg" type="text"/>
+      <input id="shout" type="submit"/>
+    </form>
+  </div>
+  <ul id="shouts">
+  </ul>
 </body>
 </html>

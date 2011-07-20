@@ -1,0 +1,15 @@
+body {
+    font-family: Helvetica, sans-serif;
+    width: 800px;
+    margin: auto;
+    padding: 20px;
+}
+
+div#shoutbox {
+    text-align: center;
+}
+
+ul#shouts {
+   text-align:center;
+   list-style:none;
+}

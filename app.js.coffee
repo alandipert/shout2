@@ -1,56 +1,140 @@
-# The SerialEventQueue Class
-# --------------------------
+# Simple log and debug handlers.
 
-# The SerialEventQueue class represents a queue of events destined for
-# the server, each requiring a response.
+window.log = (msg) ->
+  console.log msg if @console
+
+window.debug = (msg) ->
+  log "[debug] " + msg
+
+
+# The OutboundEventQueue Class
+# ----------------------------
+
+# The OutboundEventQueue class represents a queue of events destined
+# for the server, each requiring a response before subsequent events
+# are processed.
 #
-# Elements are consumed from the head of the queue one at a time, and
-# consumption is paused until a response is received and the event's
-# callback is dispatched.
-class SerialEventQueue
+# To create a new queue, and put messages on it:
+#
+# q = new OutboundEventQueue('/events').start()
+# q.put 'test', (response) -> console.log response
+#
+# Events, added with .put, are consumed from the head of the queue one
+# at a time, and consumption is paused until a response is received
+# and the event's callback is dispatched.
+class OutboundEventQueue
 
-  # **constructor**: Construct a new SerialEventQueue given an event @destination
-  constructor: (@destination_url) ->
+  # **constructor**: Construct a new OutboundEventQueue given an event.
+  #
+  # @destination_url is a URL to POST events to, as
+  # JSON objects in the 'event' parameter.
+  #
+  # @interval optional; time in ms to wait between checking the
+  # head of the queue.
+  constructor: (@destination_url, @interval = 1000) ->
     @messages = []
 
-  # **put**: put a message and its callback on the "tail" of the
-  # queue.
+  # **put**: Adds message to outbound message queue, and POSTs it to
+  # the server.  The server's response is passed to callback.
   put: (message, callback) ->
     @messages.unshift [message, callback]
 
-  # **pollInterval**: Time in ms to wait between checking the head of
-  # the queue.
-  pollInterval: 100
-
-  # **poll** polls the internal array for enqueued elements.  If
+  # **start** polls the internal array for enqueued elements.  If
   # there are any, the "head" element is popped and its message
   # component is sent to @destination_url via POST.  The response is
   # passed to the event's callback, and periodic consumption resumes.
-  poll: () =>
-    if _.isEmpty(@messages)
-      console.log("poll: outbound message queue empty")
-      _.delay(@poll, @pollInterval)
+  start: () =>
+    if _.isEmpty @messages
+      debug "OutboundEventQueue: empty, delaying"
+      _.delay @start, @interval
     else
-      console.log("poll: pending message, sending...")
+      debug "OutboundEventQueue: not empty, processing"
       [message, callback] = @messages.pop()
-      $.post @destination_url, {'event': message}, (response) =>
-        callback(response)
-        _.defer(@poll)
+      $.ajax {
+        type: 'POST',
+        url: @destination_url,
+        data: { 'message' : message },
+        success: (response) =>
+          callback(response)
+          debug "OutboundEventQueue: event processed, deferring"
+          _.defer @start
+        }
     return this
 
+  # **stop**: Stops the queue from processing events.  The queue
+  # cannot be restarted.
+  stop: () ->
+    @start = () ->
+      log "OutboundEventQueue: stopped."
 
-seq = new SerialEventQueue('/events').poll()
+    @put = () ->
+      throw "OutboundEventQueue: .put invalid; the queue is stopped."
 
-@responses = []
+# The PeriodicMessager Class
+# ----------------------------
 
-for i in [1..10]
-  seq.put i, (resp) => @responses.push resp.state
+# Given an OutboundEventQueue and a message, adds the message to the
+# queue every @interval milliseconds.
+#
+# To create a new queue and messager, and send a heartbeat message periodically to the server:
+#
+# q = new OutboundEventQueue('/events', 1000).start()
+# heartbeat = new PeriodicMessager(q, 'heartbeat', () -> console.log "heartbeat returned", 2000).start()
+#
+# Messages may take as long as @interval + the underlying event
+# queue's poll interval to actually process.
+#
+# Once stopped, PeriodicMessagers cannot be restarted.
+class PeriodicMessager
 
-seq.put "done", (resp) =>
-  expectedOrder = (String(i) for i in [1..10])
-  console.log expectedOrder
-  console.log @responses
-  if _.isEqual expectedOrder, @responses
-    console.log "SUCCESS: The events were handled in the correct order"
-  else
-    console.log "FAILURE: The events were not handled in the correct order"
+  # **constructor**: Takes a destination queue, message, callback, and interval.
+  constructor: (@queue, @message, @callback, @interval) ->
+
+  # **start**: Begin periodically putting @message on @queue, and
+  # continue to do so every @interval milliseconds until .stop is
+  # called.
+  start: () =>
+    @queue.put @message, @callback
+    _.delay @start, @interval
+    return this
+
+  # **stop**: Stops the messager from generating events.  The messager
+  # cannot be restarted.
+  stop: () ->
+    @start = () ->
+      log "PeriodicMessager: stopped."
+
+
+
+
+
+# The actual Shout2 Application
+# ----------------------------
+
+$ () ->
+
+  # Given a state (resp), assures the UI is up to date.
+  updateState = (resp) ->
+    $('#shouts').empty()
+    $.template "shoutTemplate", "<li><h2>${shout}</h2></li>"
+    $.tmpl("shoutTemplate", resp.shouts).appendTo "#shouts"
+
+  # Wire up an outbound event queue and periodic updater
+  q = new OutboundEventQueue('/events', 1000)
+  updater = new PeriodicMessager(q, {'cmd': 'update'}, updateState, 3000)
+
+  # Given a shout, put the appropriate command and a callback on the
+  # queue
+  sendShout = (shout) ->
+    q.put {'cmd': 'shout', 'text': shout}, (resp) ->
+      $('#msg').val('')
+      updateState
+
+  # Wire form submit to shout submission
+  $('#shoutform').submit (e) ->
+    sendShout $('#msg').val()
+    e.preventDefault()
+
+  # Start the queue and updater processes
+  q.start()
+  updater.start()

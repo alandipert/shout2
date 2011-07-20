@@ -6,6 +6,6 @@ Write CoffeeScript in `app.js.coffee`.
 
 Edit HTML in `app.html`.
 
-Run with `shotgun app.rb`.
+Run with `ruby app.rb`.
 
-Visit `http://localhost:9393` to see your application.
+Visit `http://localhost:4567` to shout.
