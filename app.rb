@@ -4,16 +4,11 @@ require 'json'
 @@shouts = ["inaugural wassap"]
 
 get '/app.js' do
-  coffee File.read(File.join('app.js.coffee'))
+  coffee File.read('app.js.coffee')
 end
-
-get '/messaging.js' do
-  coffee File.read(File.join('messaging.js.coffee'))
-end
-
 
 get '/' do
-  File.read(File.join('app.html'))
+  File.read('app.html')
 end
 
 post '/events' do
